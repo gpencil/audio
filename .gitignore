@@ -3,6 +3,7 @@
 #
 # Binaries for programs and plugins
 *.exe
+*.idea
 *.exe~
 *.dll
 *.so
@@ -30,3 +31,6 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+node_modules/
+dist/

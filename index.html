@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>电话录音降噪 · 音色克隆前处理</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <h1>录音降噪工具</h1>
+        <p class="subtitle">
+          上传 WAV 等常见格式，使用 RNNoise 降低环境噪声；可调干湿比；可裁掉首尾静音、压缩过长句间静音，便于音色克隆素材整理。
+        </p>
+      </header>
+
+      <section class="card drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="audio/*,.wav,.mp3,.m4a,.ogg,.webm" hidden />
+        <p class="drop-hint">点击或拖放音频到此处</p>
+        <p class="drop-meta">推荐：单声道或立体声 WAV / 手机录音；处理在浏览器本地完成，不会上传服务器。</p>
+      </section>
+
+      <section class="card controls" id="controls" hidden>
+        <div class="row">
+          <label for="mix">降噪强度 <span id="mixVal">100%</span></label>
+          <input type="range" id="mix" min="0" max="100" value="100" />
+          <span class="hint">100% 为完全降噪轨；调低可保留少量环境声，音色更自然但底噪更多。</span>
+        </div>
+        <div class="row">
+          <label for="trimDb">首尾静音：相对峰值门限 <span id="trimDbVal">−42 dB</span></label>
+          <input type="range" id="trimDb" min="-60" max="-18" value="-42" step="1" />
+          <span class="hint">低于该电平视为静音并裁切；录音很吵时可略调高（如 −36）。</span>
+        </div>
+        <div class="row">
+          <label class="check">
+            <input type="checkbox" id="trimEnable" checked />
+            启用首尾静音裁切
+          </label>
+        </div>
+        <div class="row">
+          <label class="check">
+            <input type="checkbox" id="compressEnable" />
+            压缩句间长静音（气口）
+          </label>
+          <span class="hint">把超过设定时长的静音段缩短，减轻换气声间隙；复杂剪辑仍建议用剪映。</span>
+        </div>
+        <div class="row sub" id="compressOpts" hidden>
+          <label for="longMs">原静音长于 <span id="longMsVal">500</span> ms 则压缩</label>
+          <input type="range" id="longMs" min="200" max="2000" value="500" step="50" />
+          <label for="shortMs">压缩后保留 <span id="shortMsVal">120</span> ms</label>
+          <input type="range" id="shortMs" min="40" max="400" value="120" step="10" />
+        </div>
+        <div class="actions">
+          <button type="button" class="btn primary" id="processBtn">处理并试听</button>
+          <button type="button" class="btn" id="downloadBtn" disabled>下载 WAV（48 kHz 单声道）</button>
+        </div>
+        <p class="status" id="status"></p>
+        <div class="wave-wrap">
+          <canvas id="waveBefore" height="72"></canvas>
+          <span class="wave-label">原始</span>
+          <canvas id="waveAfter" height="72"></canvas>
+          <span class="wave-label">处理后</span>
+        </div>
+        <audio id="playerAfter" controls class="player"></audio>
+      </section>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
