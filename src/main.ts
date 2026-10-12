@@ -4,6 +4,7 @@ import {
   drawWaveform,
   encodeWavMono16,
   floatTo16BitPCM,
+  parseWavFmtHeader,
   peakAbs,
   resampleTo48kMono,
   toMono,
@@ -31,6 +32,7 @@ const shortMsVal = document.getElementById("shortMsVal") as HTMLElement;
 const processBtn = document.getElementById("processBtn") as HTMLButtonElement;
 const downloadBtn = document.getElementById("downloadBtn") as HTMLButtonElement;
 const statusEl = document.getElementById("status") as HTMLElement;
+const sourceMeta = document.getElementById("sourceMeta") as HTMLParagraphElement;
 const waveBefore = document.getElementById("waveBefore") as HTMLCanvasElement;
 const waveAfter = document.getElementById("waveAfter") as HTMLCanvasElement;
 const playerAfter = document.getElementById("playerAfter") as HTMLAudioElement;
@@ -60,9 +62,8 @@ function getAudioContext(): AudioContext {
   return audioContext;
 }
 
-async function decodeFile(file: File): Promise<AudioBuffer> {
+async function decodeArrayBuffer(ab: ArrayBuffer): Promise<AudioBuffer> {
   const ctx = getAudioContext();
-  const ab = await file.arrayBuffer();
   return ctx.decodeAudioData(ab.slice(0));
 }
 
@@ -211,8 +212,32 @@ async function loadFile(file: File) {
   setStatus(`正在读取 ${file.name}…`);
   controls.hidden = true;
   try {
-    decodedBuffer = await decodeFile(file);
+    const ab = await file.arrayBuffer();
+    const wavFmt = parseWavFmtHeader(ab);
+    decodedBuffer = await decodeArrayBuffer(ab);
     controls.hidden = false;
+    const bufSr = decodedBuffer.sampleRate;
+    const ch = decodedBuffer.numberOfChannels;
+    const chLabel = ch === 1 ? "单声道" : ch === 2 ? "立体声" : `${ch} 声道`;
+    const dur = decodedBuffer.duration.toFixed(2);
+
+    if (wavFmt) {
+      const wfCh =
+        wavFmt.channels === 1 ? "单声道" : wavFmt.channels === 2 ? "立体声" : `${wavFmt.channels} 声道`;
+      const mismatch = wavFmt.sampleRate !== bufSr;
+      sourceMeta.innerHTML = [
+        `WAV 文件头：<strong>${wavFmt.sampleRate} Hz</strong> · ${wfCh} · ${wavFmt.bitsPerSample} bit PCM`,
+        `浏览器解码缓冲：<strong>${bufSr} Hz</strong> · ${chLabel} · 时长约 ${dur} 秒`,
+        mismatch
+          ? `<span class="source-meta-warn">与文件头不一致：处理与波形以<strong>解码缓冲</strong>的 ${bufSr} Hz 为准（多为浏览器/AudioContext 已内部重采样；macOS「显示简介」仍写 16 kHz 是正常现象）。</span>`
+          : "",
+        `处理与导出时会转为 48 kHz 单声道。`,
+      ]
+        .filter(Boolean)
+        .join("<br>");
+    } else {
+      sourceMeta.innerHTML = `解码缓冲：<strong>${bufSr} Hz</strong> · ${chLabel} · 时长约 ${dur} 秒（非标准 WAV 或压缩容器时仅显示此项）。处理与导出时会转为 48 kHz 单声道。`;
+    }
     processed48k = null;
     if (processedUrl) {
       URL.revokeObjectURL(processedUrl);
@@ -224,9 +249,7 @@ async function loadFile(file: File) {
     const preview = await resampleTo48kMono(mono, decodedBuffer.sampleRate);
     drawWaveform(waveBefore, preview, "rgba(139,147,167,0.85)");
     drawWaveform(waveAfter, new Float32Array(0), "rgba(91,140,255,0.9)");
-    setStatus(
-      `已加载：${file.name}，${decodedBuffer.sampleRate} Hz，${decodedBuffer.numberOfChannels} 声道，约 ${decodedBuffer.duration.toFixed(2)} 秒。点击「处理并试听」。`,
-    );
+    setStatus(`已加载：${file.name}。点击「处理并试听」。`);
   } catch (e) {
     console.error(e);
     setStatus(`无法解码该文件：${e instanceof Error ? e.message : String(e)}`, true);

@@ -1,5 +1,46 @@
 const RN_RATE = 48_000;
 
+export type WavFmtInfo = {
+  sampleRate: number;
+  channels: number;
+  bitsPerSample: number;
+  audioFormat: number;
+};
+
+/**
+ * 从 RIFF/WAVE 的 `fmt ` 块读取**文件里写的**采样率（一般与 macOS「显示简介」一致）。
+ * 非 WAV、或无法解析时返回 null。
+ */
+export function parseWavFmtHeader(buffer: ArrayBuffer): WavFmtInfo | null {
+  const dv = new DataView(buffer);
+  if (buffer.byteLength < 28) return null;
+  const riff = String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3));
+  if (riff !== "RIFF") return null;
+  const wave = String.fromCharCode(dv.getUint8(8), dv.getUint8(9), dv.getUint8(10), dv.getUint8(11));
+  if (wave !== "WAVE") return null;
+  let o = 12;
+  while (o + 8 <= buffer.byteLength) {
+    const id = String.fromCharCode(
+      dv.getUint8(o),
+      dv.getUint8(o + 1),
+      dv.getUint8(o + 2),
+      dv.getUint8(o + 3),
+    );
+    const chunkSize = dv.getUint32(o + 4, true);
+    o += 8;
+    if (id === "fmt ") {
+      if (chunkSize < 16 || o + chunkSize > buffer.byteLength) return null;
+      const audioFormat = dv.getUint16(o, true);
+      const channels = dv.getUint16(o + 2, true);
+      const sampleRate = dv.getUint32(o + 4, true);
+      const bitsPerSample = dv.getUint16(o + 14, true);
+      return { sampleRate, channels, bitsPerSample, audioFormat };
+    }
+    o += chunkSize + (chunkSize % 2);
+  }
+  return null;
+}
+
 /** 混为单声道 Float32 */
 export function toMono(audioBuffer: AudioBuffer): Float32Array {
   const n = audioBuffer.length;

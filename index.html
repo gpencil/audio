@@ -22,6 +22,12 @@
       </section>
 
       <section class="card controls" id="controls" hidden>
+        <div class="source-meta-block">
+          <p class="source-meta" id="sourceMeta"></p>
+          <p class="source-meta-hint">
+            WAV 会列出<strong>文件头</strong>与<strong>浏览器解码</strong>两套信息；二者可能不同（例如文件为 16 kHz，解码后为 44100 Hz）。降噪与时间轴始终以解码缓冲为准。
+          </p>
+        </div>
         <div class="row">
           <label for="mix">降噪强度 <span id="mixVal">100%</span></label>
           <input type="range" id="mix" min="0" max="100" value="100" />
